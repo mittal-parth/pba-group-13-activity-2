@@ -295,10 +295,20 @@ mod tests {
 
     #[test]
     fn un_pad_removes_correct_padding() {
-        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 3, 3, 3, 3];
-        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 3, 3, 3];
+        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3];
         let un_padded_data = un_pad(data);
         assert_eq!(un_padded_data, expected_data, "Unpadded data should be the same as the original data without padding");
+    }
+
+    #[test]
+    fn test_ecb_encrypt_decrypt() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        let plain_text = b"Hello, world!".to_vec();
+        let encrypted = ecb_encrypt(plain_text.clone(), key);
+        let decrypted = ecb_decrypt(encrypted.clone(), key);
+
+        assert_eq!(decrypted, plain_text);
     }
 }
 
