@@ -125,7 +125,7 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
     // block division
-    let data = group(plain_text);
+    let data = group(pad(plain_text));
 
     let mut cipher_text: Vec<u8> = Vec::new();
     // encryption
@@ -142,9 +142,20 @@ fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	let blocks = un_group(cipher_text);
+    // block division
+    let data = group(cipher_text);
 
-	
+    let mut plain_text: Vec<u8> = Vec::new();
+    // encryption
+    for block in data {
+        // Encrypt the block
+        let decrypted_block = aes_decrypt(block, &key);
+        // Push each byte from the encrypted block into the cipher_text vector
+        for byte in decrypted_block.iter() {
+            plain_text.push(*byte);
+        }
+    }
+    un_pad(plain_text)
 }
 
 /// The next mode, which you can implement on your own is cipherblock chaining.
