@@ -43,7 +43,7 @@ fn aes_encrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZ
     block.into()
 }
 
-/// Simple AES encryption
+/// Simple AES decryption
 /// Helper function to make the core AES block cipher easier to understand.
 fn aes_decrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
     // Convert the inputs to the necessary data type
@@ -73,7 +73,7 @@ fn aes_decrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZ
 /// another entire block containing the block length in each byte. In our case,
 /// [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
 fn pad(mut data: Vec<u8>) -> Vec<u8> {
-    // When twe have a multiple the second term is 0
+    // When we have a multiple the second term is 0
     let number_pad_bytes = BLOCK_SIZE - data.len() % BLOCK_SIZE;
 
     for _ in 0..number_pad_bytes {
@@ -109,12 +109,10 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 }
 
 /// Does the opposite of the pad function.
-
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let mut res = data.clone();
     res.truncate(data.len().saturating_sub(*data.last().unwrap() as usize));
     res
-
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -231,12 +229,79 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    // Remember to generate a random nonce
-    todo!()
+    // Generate a random nonce
+    let mut random_number_generator = rand::thread_rng();
+    let mut nonce = [0_u8; BLOCK_SIZE / 2];
+    random_number_generator.fill(&mut nonce);
+
+    // Initialise/Prepend the cipher text with the nonce so it can be extracted while decrypting
+    let mut cipher_text = nonce.to_vec();
+
+    // Pad the plain text to be a multiple of the block size
+    let plain_text = pad(plain_text.clone());
+
+    // Split the plain text into blocks and group under one vector
+    let blocks = group(plain_text);
+
+    for (i, block) in blocks.iter().enumerate() {
+        // Construct the counter block by concatenating the nonce and the counter
+        let mut counter_block: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        counter_block[..BLOCK_SIZE / 2].copy_from_slice(&nonce);
+        counter_block[BLOCK_SIZE / 2..].copy_from_slice(&(i as u64).to_ne_bytes());
+
+        // Encrypt the counter block by aes encryption
+        let cipher_block = aes_encrypt(counter_block, &key);
+
+        // XOR the encrypted counter block with the plain text block
+        // Zip is used to iterate over two vectors simultaneously
+        // Map is used to apply the XOR operation to each pair of elements we get from the zip operation
+        let cipher_block_xor: Vec<u8> = block
+            .iter()
+            .zip(cipher_block.iter())
+            .map(|(&x1, &x2)| x1 ^ x2)
+            .collect();
+
+        // Keep adding the chunks of XORed data to the cipher text
+        cipher_text.extend_from_slice(&cipher_block_xor);
+    }
+
+    cipher_text
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    let mut plain_text: Vec<u8> = Vec::new();
+
+    // Extract the nonce from the cipher text
+    let (nonce_slice, cipher_text) = cipher_text.split_at(8);
+    let nonce: [u8; BLOCK_SIZE / 2] = nonce_slice.try_into().unwrap();
+
+    // Split the cipher text into blocks and group under one vector
+    let blocks = group(cipher_text.to_vec());
+
+    for (i, block) in blocks.iter().enumerate() {
+        // Construct the counter block by concatenating the nonce and the counter
+        let mut counter_block: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        counter_block[..BLOCK_SIZE / 2].copy_from_slice(&nonce);
+        counter_block[BLOCK_SIZE / 2..].copy_from_slice(&(i as u64).to_ne_bytes());
+
+        // Encrypt the counter block by aes encryption
+        let cipher_block = aes_encrypt(counter_block, &key);
+
+        // XOR the encrypted counter block with the cipher text block
+        // Zip is used to iterate over two vectors simultaneously
+        // Map is used to apply the XOR operation to each pair of elements we get from the zip operation
+        let cipher_block_xor: Vec<u8> = block
+            .iter()
+            .zip(cipher_block.iter())
+            .map(|(&x1, &x2)| x1 ^ x2)
+            .collect();
+
+        // Keep adding the chunks of XORed data to the plain text
+        plain_text.extend_from_slice(&cipher_block_xor);
+    }
+
+    // Remove the padding from the plain text and return
+    un_pad(plain_text)
 }
 
 #[cfg(test)]
@@ -291,6 +356,7 @@ mod tests {
         assert_eq!(un_padded_data, vec![100u8; 30]);
     }
 
+    #[test]
     fn aes_encrypt_returns_correct_encryption() {
         let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
         let key: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
@@ -399,6 +465,3 @@ mod tests {
         assert_eq!(decrypted, plain_text);
     }
 }
-
-
-
