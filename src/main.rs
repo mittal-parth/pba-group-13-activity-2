@@ -124,12 +124,38 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
-    todo!()
+    // block division
+    let data = group(pad(plain_text));
+
+    let mut cipher_text: Vec<u8> = Vec::new();
+    // encryption
+    for block in data {
+        // Encrypt the block
+        let encrypted_block = aes_encrypt(block, &key);
+        // Push each byte from the encrypted block into the cipher_text vector
+        for byte in encrypted_block.iter() {
+            cipher_text.push(*byte);
+        }
+    }
+    cipher_text
 }
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    // block division
+    let data = group(cipher_text);
+
+    let mut plain_text: Vec<u8> = Vec::new();
+    // encryption
+    for block in data {
+        // Encrypt the block
+        let decrypted_block = aes_decrypt(block, &key);
+        // Push each byte from the encrypted block into the cipher_text vector
+        for byte in decrypted_block.iter() {
+            plain_text.push(*byte);
+        }
+    }
+    un_pad(plain_text)
 }
 
 /// The next mode, which you can implement on your own is cipherblock chaining.
@@ -230,7 +256,6 @@ mod tests {
 
         assert_eq!(unpadded_data, vec![100u8; 30]);
     }
-}
 
     fn aes_encrypt_returns_correct_encryption() {
         let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
@@ -270,10 +295,20 @@ mod tests {
 
     #[test]
     fn un_pad_removes_correct_padding() {
-        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 3, 3, 3, 3];
-        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 3, 3, 3];
+        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3];
         let un_padded_data = un_pad(data);
         assert_eq!(un_padded_data, expected_data, "Unpadded data should be the same as the original data without padding");
+    }
+
+    #[test]
+    fn test_ecb_encrypt_decrypt() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        let plain_text = b"Hello, world!".to_vec();
+        let encrypted = ecb_encrypt(plain_text.clone(), key);
+        let decrypted = ecb_decrypt(encrypted.clone(), key);
+
+        assert_eq!(decrypted, plain_text);
     }
 }
 

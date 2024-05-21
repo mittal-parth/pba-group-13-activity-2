@@ -3,16 +3,6 @@
 version = 3
 
 [[package]]
-<<<<<<< HEAD
-=======
-name = "activity_day2"
-version = "0.1.0"
-dependencies = [
- "aes",
-]
-
-[[package]]
->>>>>>> feature/caxqueiroz
 name = "aes"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -24,7 +14,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "aes-modes-activity"
 version = "0.1.0"
 dependencies = [
@@ -32,8 +21,6 @@ dependencies = [
 ]
 
 [[package]]
-=======
->>>>>>> feature/caxqueiroz
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
