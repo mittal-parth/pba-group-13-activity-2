@@ -16,43 +16,43 @@
 #![allow(unused_imports)]
 
 use aes::{
-	cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
-	Aes128,
+    cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
+    Aes128,
 };
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
 
 fn main() {
-	todo!("Maybe this should be a library crate. TBD");
+    todo!("Maybe this should be a library crate. TBD");
 }
 
 /// Simple AES encryption
 /// Helper function to make the core AES block cipher easier to understand.
 fn aes_encrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
-	// Convert the inputs to the necessary data type
-	let mut block = GenericArray::from(data);
-	let key = GenericArray::from(*key);
+    // Convert the inputs to the necessary data type
+    let mut block = GenericArray::from(data);
+    let key = GenericArray::from(*key);
 
-	let cipher = Aes128::new(&key);
+    let cipher = Aes128::new(&key);
 
-	cipher.encrypt_block(&mut block);
+    cipher.encrypt_block(&mut block);
 
-	block.into()
+    block.into()
 }
 
 /// Simple AES encryption
 /// Helper function to make the core AES block cipher easier to understand.
 fn aes_decrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
-	// Convert the inputs to the necessary data type
-	let mut block = GenericArray::from(data);
-	let key = GenericArray::from(*key);
+    // Convert the inputs to the necessary data type
+    let mut block = GenericArray::from(data);
+    let key = GenericArray::from(*key);
 
-	let cipher = Aes128::new(&key);
+    let cipher = Aes128::new(&key);
 
-	cipher.decrypt_block(&mut block);
+    cipher.decrypt_block(&mut block);
 
-	block.into()
+    block.into()
 }
 
 /// Before we can begin encrypting our raw data, we need it to be a multiple of the
@@ -71,40 +71,46 @@ fn aes_decrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZ
 /// another entire block containing the block length in each byte. In our case,
 /// [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
 fn pad(mut data: Vec<u8>) -> Vec<u8> {
-	// When twe have a multiple the second term is 0
-	let number_pad_bytes = BLOCK_SIZE - data.len() % BLOCK_SIZE;
+    // When twe have a multiple the second term is 0
+    let number_pad_bytes = BLOCK_SIZE - data.len() % BLOCK_SIZE;
 
-	for _ in 0..number_pad_bytes {
-		data.push(number_pad_bytes as u8);
-	}
+    for _ in 0..number_pad_bytes {
+        data.push(number_pad_bytes as u8);
+    }
 
-	data
+    data
 }
 
 /// Groups the data into BLOCK_SIZE blocks. Assumes the data is already
 /// a multiple of the block size. If this is not the case, call `pad` first.
 fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
-	let mut blocks = Vec::new();
-	let mut i = 0;
-	while i < data.len() {
-		let mut block: [u8; BLOCK_SIZE] = Default::default();
-		block.copy_from_slice(&data[i..i + BLOCK_SIZE]);
-		blocks.push(block);
+    let mut blocks = Vec::new();
+    let mut i = 0;
+    while i < data.len() {
+        let mut block: [u8; BLOCK_SIZE] = Default::default();
+        block.copy_from_slice(&data[i..i + BLOCK_SIZE]);
+        blocks.push(block);
 
-		i += BLOCK_SIZE;
-	}
+        i += BLOCK_SIZE;
+    }
 
-	blocks
+    blocks
 }
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    todo!()
+    let mut data = Vec::new();
+    for b in blocks {
+        data.extend(b.to_vec())
+    }
+    data
 }
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
-	todo!()
+    let mut res = data.clone();
+    res.truncate(data.len().saturating_sub(*data.last().unwrap() as usize));
+    res
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -115,12 +121,12 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// The next mode, which you can implement on your own is cipherblock chaining.
@@ -136,13 +142,13 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// very first block because it doesn't have a previous block. Typically this IV
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	// Remember to generate a random initialization vector for the first block.
+    // Remember to generate a random initialization vector for the first block.
 
-	todo!()
+    todo!()
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// Another mode which you can implement on your own is counter mode.
@@ -162,10 +168,63 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	// Remember to generate a random nonce
-	todo!()
+    // Remember to generate a random nonce
+    todo!()
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	todo!()
+    todo!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pad_and_unpad() {
+        let data = vec![100u8; 15];
+
+        let padded_data = pad(data);
+
+        assert_eq!(padded_data.len() % BLOCK_SIZE, 0);
+        assert_eq!(padded_data.last().unwrap(), &1u8);
+
+        let unpadded_data = un_pad(padded_data);
+        assert_eq!(unpadded_data, vec![100u8; 15]);
+
+        let data = vec![200u8; 32];
+
+        let padded_data = pad(data);
+
+        assert_eq!(padded_data.len() % BLOCK_SIZE, 0);
+        assert_eq!(padded_data.last().unwrap(), &16u8);
+
+        let unpadded_data = un_pad(padded_data);
+        assert_eq!(unpadded_data, vec![200u8; 32]);
+    }
+
+    #[test]
+    fn group_and_ungroup() {
+        let data = vec![100u8; 30];
+
+        let padded_data = pad(data);
+
+        let grouped_data = group(padded_data);
+
+        assert_eq!(
+            grouped_data,
+            vec![
+                [100u8; 16],
+                [
+                    100u8, 100u8, 100u8, 100u8, 100u8, 100u8, 100u8, 100u8, 100u8, 100u8, 100u8,
+                    100u8, 100u8, 100u8, 2u8, 2u8
+                ]
+            ]
+        );
+
+        let ungrouped_data = un_group(grouped_data);
+        let unpadded_data = un_pad(ungrouped_data);
+
+        assert_eq!(unpadded_data, vec![100u8; 30]);
+    }
 }
