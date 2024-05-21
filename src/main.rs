@@ -1,5 +1,6 @@
 //! In Module 1, we discussed Block ciphers like AES. Block ciphers have a fixed length input.
 //! Real wold data that we wish to encrypt _may_ be exactly the right length, but is probably not.
+//! Real world data that we wish to encrypt _may_ be exactly the right length, but is probably not.
 //! When your data is too short, you can simply pad it up to the correct length.
 //! When your data is too long, you have some options.
 //!
@@ -103,8 +104,19 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 }
 
 /// Does the opposite of the pad function.
-fn un_pad(data: Vec<u8>) -> Vec<u8> {
-	todo!()
+fn un_pad(mut data: Vec<u8>) -> Vec<u8> {
+    if data.len() % BLOCK_SIZE == 0 {
+        // If the data is a multiple of the block size, remove the last block
+        data.truncate(data.len() - BLOCK_SIZE);
+    } else {
+        // If the data is not a multiple of the block size, remove the padding bytes
+        if let Some(&last_byte) = data.last() {
+            if last_byte as usize <= data.len() {
+                data.truncate(data.len() - 1 - last_byte  as usize);
+            }
+        }
+    }
+    data
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -115,12 +127,12 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// The next mode, which you can implement on your own is cipherblock chaining.
@@ -136,13 +148,13 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// very first block because it doesn't have a previous block. Typically this IV
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	// Remember to generate a random initialization vector for the first block.
+    // Remember to generate a random initialization vector for the first block.
 
 	todo!()
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	todo!()
+    todo!()
 }
 
 /// Another mode which you can implement on your own is counter mode.
@@ -162,10 +174,62 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-	// Remember to generate a random nonce
-	todo!()
+    // Remember to generate a random nonce
+    todo!()
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 	todo!()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aes_encrypt_returns_correct_encryption() {
+        let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let key: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let encrypted_data = aes_encrypt(data, &key);
+        assert_ne!(encrypted_data, data, "Encrypted data should not be the same as the original data");
+    }
+
+    #[test]
+    fn aes_encrypt_and_decrypt_returns_original_data() {
+        let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let key: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let encrypted_data = aes_encrypt(data, &key);
+        let decrypted_data = aes_decrypt(encrypted_data, &key);
+        assert_eq!(decrypted_data, data, "Decrypted data should be the same as the original data");
+    }
+
+    #[test]
+    fn aes_encrypt_with_different_keys_produces_different_results() {
+        let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let key1: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let key2: [u8; BLOCK_SIZE] = [1; BLOCK_SIZE];
+        let encrypted_data1 = aes_encrypt(data, &key1);
+        let encrypted_data2 = aes_encrypt(data, &key2);
+        assert_ne!(encrypted_data1, encrypted_data2, "Encryption with different keys should produce different results");
+    }
+
+    #[test]
+    fn aes_decrypt_with_wrong_key_does_not_return_original_data() {
+        let data: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let key: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let wrong_key: [u8; BLOCK_SIZE] = [1; BLOCK_SIZE];
+        let encrypted_data = aes_encrypt(data, &key);
+        let decrypted_data = aes_decrypt(encrypted_data, &wrong_key);
+        assert_ne!(decrypted_data, data, "Decryption with wrong key should not return the original data");
+    }
+
+    #[test]
+    fn un_pad_removes_correct_padding() {
+        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 3, 3, 3, 3];
+        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let un_padded_data = un_pad(data);
+        assert_eq!(un_padded_data, expected_data, "Unpadded data should be the same as the original data without padding");
+    }
+}
+
+
