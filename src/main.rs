@@ -99,8 +99,19 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 }
 
 /// Does the opposite of the pad function.
-fn un_pad(data: Vec<u8>) -> Vec<u8> {
-    todo!()
+fn un_pad(mut data: Vec<u8>) -> Vec<u8> {
+    if data.len() % BLOCK_SIZE == 0 {
+        // If the data is a multiple of the block size, remove the last block
+        data.truncate(data.len() - BLOCK_SIZE);
+    } else {
+        // If the data is not a multiple of the block size, remove the padding bytes
+        if let Some(&last_byte) = data.last() {
+            if last_byte as usize <= data.len() {
+                data.truncate(data.len() - 1 - last_byte  as usize);
+            }
+        }
+    }
+    data
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -205,6 +216,14 @@ mod tests {
         let encrypted_data = aes_encrypt(data, &key);
         let decrypted_data = aes_decrypt(encrypted_data, &wrong_key);
         assert_ne!(decrypted_data, data, "Decryption with wrong key should not return the original data");
+    }
+
+    #[test]
+    fn un_pad_removes_correct_padding() {
+        let data: Vec<u8> = vec![1, 2, 3, 4, 5, 3, 3, 3, 3];
+        let expected_data: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let un_padded_data = un_pad(data);
+        assert_eq!(un_padded_data, expected_data, "Unpadded data should be the same as the original data without padding");
     }
 }
 
