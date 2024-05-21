@@ -20,6 +20,7 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
+use rand::Rng;
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -168,16 +169,49 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// see https://de.wikipedia.org/wiki/Cipher_Block_Chaining_Mode
 ///
 /// You will need to generate a random initialization vector (IV) to encrypt the
-/// very first block because it doesn't have a previous block. Typically this IV
+/// very first block because it doesn't have a previous block. Typically, this IV
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
+    let mut rng = rand::thread_rng();
+    let mut iv: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+    rng.fill(&mut iv);
+    let mut cipher_text = iv.to_vec();
 
-    todo!()
+    let plain_text = pad(plain_text.clone());
+    let blocks = group(plain_text);
+    for block in blocks {
+        // XOR it with the previous ciphertext block
+        let mut xor_block = [0u8; BLOCK_SIZE];
+        let prev_cipher_block = &cipher_text[cipher_text.len() - BLOCK_SIZE..];
+        for i in 0..BLOCK_SIZE {
+            xor_block[i] = block[i] ^ prev_cipher_block[i];
+        }
+
+        let encrypted_block = aes_encrypt(xor_block, &key);
+        cipher_text.extend_from_slice(&encrypted_block);
+    }
+
+    cipher_text
+
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    let mut plain_text = Vec::new();
+    let blocks = group(cipher_text);
+    let iv = blocks[0];
+    for i in 1..blocks.len() {
+        let block = blocks[i];
+        let decrypted_block = aes_decrypt(block, &key);
+        let prev_block = blocks[i - 1];
+        let mut xor_block = [0u8; BLOCK_SIZE];
+        for i in 0..BLOCK_SIZE {
+            xor_block[i] = decrypted_block[i] ^ prev_block[i];
+        }
+        plain_text.extend_from_slice(&xor_block);
+    }
+
+    un_pad(plain_text)
 }
 
 /// Another mode which you can implement on your own is counter mode.
@@ -218,8 +252,8 @@ mod tests {
         assert_eq!(padded_data.len() % BLOCK_SIZE, 0);
         assert_eq!(padded_data.last().unwrap(), &1u8);
 
-        let unpadded_data = un_pad(padded_data);
-        assert_eq!(unpadded_data, vec![100u8; 15]);
+        let un_padded_data = un_pad(padded_data);
+        assert_eq!(un_padded_data, vec![100u8; 15]);
 
         let data = vec![200u8; 32];
 
@@ -228,8 +262,8 @@ mod tests {
         assert_eq!(padded_data.len() % BLOCK_SIZE, 0);
         assert_eq!(padded_data.last().unwrap(), &16u8);
 
-        let unpadded_data = un_pad(padded_data);
-        assert_eq!(unpadded_data, vec![200u8; 32]);
+        let un_padded_data = un_pad(padded_data);
+        assert_eq!(un_padded_data, vec![200u8; 32]);
     }
 
     #[test]
@@ -252,9 +286,9 @@ mod tests {
         );
 
         let ungrouped_data = un_group(grouped_data);
-        let unpadded_data = un_pad(ungrouped_data);
+        let un_padded_data = un_pad(ungrouped_data);
 
-        assert_eq!(unpadded_data, vec![100u8; 30]);
+        assert_eq!(un_padded_data, vec![100u8; 30]);
     }
 
     fn aes_encrypt_returns_correct_encryption() {
@@ -304,10 +338,64 @@ mod tests {
     #[test]
     fn test_ecb_encrypt_decrypt() {
         let key: [u8; 16] = *b"0123456789abcdef";
-        let plain_text = b"Hello, world!".to_vec();
+        let plain_text = b"To the moon!".to_vec();
         let encrypted = ecb_encrypt(plain_text.clone(), key);
         let decrypted = ecb_decrypt(encrypted.clone(), key);
 
+        assert_eq!(decrypted, plain_text);
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt() {
+        let key: [u8; BLOCK_SIZE] = *b"0123456789abcdef";
+        let plain_text = b"To the moon!".to_vec();
+        let encrypted = cbc_encrypt(plain_text.clone(), key);
+        let decrypted = cbc_decrypt(encrypted.clone(), key);
+
+        assert_eq!(decrypted, plain_text);
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt_different_inputs() {
+        let key1: [u8; BLOCK_SIZE] = *b"0123456789abcdef";
+        let key2: [u8; BLOCK_SIZE] = *b"fedcba9876543210";
+        let plain_text1 = b"To the moon!".to_vec();
+        let plain_text2 = b"Back to Earth!".to_vec();
+
+        let encrypted1 = cbc_encrypt(plain_text1.clone(), key1);
+        let decrypted1 = cbc_decrypt(encrypted1.clone(), key1);
+        assert_eq!(decrypted1, plain_text1);
+
+        let encrypted2 = cbc_encrypt(plain_text2.clone(), key1);
+        let decrypted2 = cbc_decrypt(encrypted2.clone(), key1);
+        assert_eq!(decrypted2, plain_text2);
+
+        let encrypted3 = cbc_encrypt(plain_text1.clone(), key2);
+        let decrypted3 = cbc_decrypt(encrypted3.clone(), key2);
+        assert_eq!(decrypted3, plain_text1);
+
+        let encrypted4 = cbc_encrypt(plain_text2.clone(), key2);
+        let decrypted4 = cbc_decrypt(encrypted4.clone(), key2);
+        assert_eq!(decrypted4, plain_text2);
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt_empty_input() {
+        let key: [u8; BLOCK_SIZE] = *b"0123456789abcdef";
+        let plain_text = Vec::new();
+
+        let encrypted = cbc_encrypt(plain_text.clone(), key);
+        let decrypted = cbc_decrypt(encrypted.clone(), key);
+        assert_eq!(decrypted, plain_text);
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt_large_input() {
+        let key: [u8; BLOCK_SIZE] = *b"0123456789abcdef";
+        let plain_text = vec![0u8; 10_000];
+
+        let encrypted = cbc_encrypt(plain_text.clone(), key);
+        let decrypted = cbc_decrypt(encrypted.clone(), key);
         assert_eq!(decrypted, plain_text);
     }
 }
