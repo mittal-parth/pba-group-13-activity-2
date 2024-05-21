@@ -464,4 +464,94 @@ mod tests {
         let decrypted = cbc_decrypt(encrypted.clone(), key);
         assert_eq!(decrypted, plain_text);
     }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_even_blocksize() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+
+        // Test with even block size
+        let plain_text_bytes: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        let decrypted = ctr_decrypt(encrypted.clone(), key);
+        assert_eq!(decrypted, plain_text_bytes);
+    }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_uneven_blocksize() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        
+        // Test with uneven block size
+        let plain_text_bytes = b"I am Testing CTR Mode".to_vec();
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        let decrypted = ctr_decrypt(encrypted.clone(), key);
+        assert_eq!(decrypted, plain_text_bytes);
+        
+        assert_eq!(String::from_utf8(decrypted).unwrap(), "I am Testing CTR Mode".to_string());
+    }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_empty_plaintext() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        
+        // Test with empty plain text
+        let plain_text_bytes = Vec::new();
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        let decrypted = ctr_decrypt(encrypted.clone(), key);
+        assert_eq!(decrypted, plain_text_bytes);
+        assert_eq!(decrypted == vec![], plain_text_bytes == vec![]);
+    }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_non_ascii_plaintext() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        
+        // Test with non-ascii plain text
+        let plain_text_bytes = vec![128u8, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143];
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        let decrypted = ctr_decrypt(encrypted.clone(), key);
+        assert_eq!(decrypted, plain_text_bytes);
+        assert_eq!(decrypted == vec![], plain_text_bytes == vec![]);
+    }
+    
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_changed_key() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        
+        let plain_text_bytes = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6];
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        // Decrypt with a different key
+        let key: [u8; 16] = *b"9876543210abcdef";
+        let decrypted = ctr_decrypt(encrypted.clone(), key);
+        assert_ne!(decrypted, plain_text_bytes);
+    }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt_with_changed_nonce() {
+        let key: [u8; 16] = *b"0123456789abcdef";
+        
+        let plain_text_bytes = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6];
+        let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+        assert_ne!(encrypted, plain_text_bytes);
+        
+        // Decrypt with a different nonce
+        let (nonce_slice, cipher_text) = encrypted.split_at(8);
+
+        let mut random_number_generator = rand::thread_rng();
+        let mut wrong_nonce = [0_u8; BLOCK_SIZE / 2];
+        random_number_generator.fill(&mut wrong_nonce);
+        let wrong_nonce_cipher_text = [&wrong_nonce, cipher_text].concat();
+
+        let decrypted = ctr_decrypt(wrong_nonce_cipher_text.clone(), key);
+        assert_ne!(decrypted, plain_text_bytes);
+    }
 }
