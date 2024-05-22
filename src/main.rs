@@ -249,8 +249,8 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         counter_block[..BLOCK_SIZE / 2].copy_from_slice(&nonce);
         counter_block[BLOCK_SIZE / 2..].copy_from_slice(&(i as u64).to_ne_bytes());
 
-        // Encrypt the counter block by aes encryption
-        let cipher_block = aes_encrypt(counter_block, &key);
+        // Encrypt the counter block by ecb encryption
+        let cipher_block = ecb_encrypt(counter_block.to_vec(), key);
 
         // XOR the encrypted counter block with the plain text block
         // Zip is used to iterate over two vectors simultaneously
@@ -284,8 +284,8 @@ fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         counter_block[..BLOCK_SIZE / 2].copy_from_slice(&nonce);
         counter_block[BLOCK_SIZE / 2..].copy_from_slice(&(i as u64).to_ne_bytes());
 
-        // Encrypt the counter block by aes encryption
-        let cipher_block = aes_encrypt(counter_block, &key);
+        // Encrypt the counter block by ecb encryption
+        let cipher_block = ecb_encrypt(counter_block.to_vec(), key);
 
         // XOR the encrypted counter block with the cipher text block
         // Zip is used to iterate over two vectors simultaneously
